@@ -1,5 +1,4 @@
 ﻿using System;
-
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -14,6 +13,7 @@ namespace Org.BouncyCastle.Tls.Crypto.Impl.BC
         internal readonly IAeadCipher m_cipher;
 
         private KeyParameter key;
+        private AeadParameters _parameters;
 
         internal BcTlsAeadCipherImpl(IAeadCipher cipher, bool isEncrypting)
         {
@@ -33,9 +33,22 @@ namespace Org.BouncyCastle.Tls.Crypto.Impl.BC
         }
 #endif
 
-        public void Init(byte[] nonce, int macSize, byte[] additionalData)
+        public void Init(ReadOnlyMemory<byte> nonce, int macSize, byte[] additionalData)
         {
-            m_cipher.Init(m_isEncrypting, new AeadParameters(key, macSize * 8, nonce, additionalData));
+            // Used to decrease cpu usage when creating many instances
+            if (_parameters == null)
+            {
+                _parameters = new AeadParameters(key, macSize * 8, nonce, additionalData);
+            }
+            else
+            {
+                _parameters.key = key;
+                _parameters.macSize = macSize * 8;
+                _parameters.nonce = nonce;
+                _parameters.associatedText = additionalData;
+            }
+
+            m_cipher.Init(m_isEncrypting, _parameters);
         }
 
         public int GetOutputSize(int inputLength)

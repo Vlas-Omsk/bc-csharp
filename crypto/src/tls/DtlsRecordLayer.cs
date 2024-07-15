@@ -1025,7 +1025,7 @@ namespace Org.BouncyCastle.Tls
             }
 
             int received = System.Math.Min(m_recordQueue.Available, recordLength);
-            m_recordQueue.RemoveData(buf, off, received, 0);
+            m_recordQueue.RemoveData(buf.AsMemory(off, received), 0);
             return received;
         }
 

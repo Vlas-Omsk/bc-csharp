@@ -17,50 +17,37 @@ namespace Org.BouncyCastle.Crypto.Parameters
             if (ivLength < 0)
                 throw new ArgumentOutOfRangeException(nameof(ivLength));
 
-            ParametersWithIV result = new ParametersWithIV(parameter, ivLength);
-            action(result.m_iv, state);
+            var iv = new byte[ivLength];
+
+            ParametersWithIV result = new ParametersWithIV(parameter, iv.AsMemory());
+            action(iv, state);
             return result;
         }
 #endif
 
-        internal static ICipherParameters ApplyOptionalIV(ICipherParameters parameters, byte[] iv)
+        internal static ICipherParameters ApplyOptionalIV(ICipherParameters parameters, ReadOnlyMemory<byte>? iv)
         {
-            return iv == null ? parameters : new ParametersWithIV(parameters, iv);
+            return !iv.HasValue ? parameters : new ParametersWithIV(parameters, iv.Value);
         }
 
         private readonly ICipherParameters m_parameters;
-        private readonly byte[] m_iv;
+        private readonly ReadOnlyMemory<byte> m_iv;
 
-        public ParametersWithIV(ICipherParameters parameters, byte[] iv)
-            : this(parameters, iv, 0, iv.Length)
+
+        public ParametersWithIV(ICipherParameters parameters, ReadOnlyMemory<byte> iv)
         {
-            // NOTE: 'parameters' may be null to imply key re-use
-            if (iv == null)
-                throw new ArgumentNullException(nameof(iv));
-
             m_parameters = parameters;
-            m_iv = (byte[])iv.Clone();
+            m_iv = iv;
         }
 
-        public ParametersWithIV(ICipherParameters parameters, byte[] iv, int ivOff, int ivLen)
-        {
-            // NOTE: 'parameters' may be null to imply key re-use
-            if (iv == null)
-                throw new ArgumentNullException(nameof(iv));
-
-            m_parameters = parameters;
-            m_iv = new byte[ivLen];
-            Array.Copy(iv, ivOff, m_iv, 0, ivLen);
-        }
-
-#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-        public ParametersWithIV(ICipherParameters parameters, ReadOnlySpan<byte> iv)
-        {
-            // NOTE: 'parameters' may be null to imply key re-use
-            m_parameters = parameters;
-            m_iv = iv.ToArray();
-        }
-#endif
+//#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+//        public ParametersWithIV(ICipherParameters parameters, ReadOnlySpan<byte> iv)
+//        {
+//            // NOTE: 'parameters' may be null to imply key re-use
+//            m_parameters = parameters;
+//            m_iv = iv.ToArray();
+//        }
+//#endif
 
         private ParametersWithIV(ICipherParameters parameters, int ivLength)
         {
@@ -77,12 +64,12 @@ namespace Org.BouncyCastle.Crypto.Parameters
             if (m_iv.Length != len)
                 throw new ArgumentOutOfRangeException(nameof(len));
 
-            Array.Copy(m_iv, 0, buf, off, len);
+            m_iv.CopyTo(new Memory<byte>(buf, off, len));
         }
 
         public byte[] GetIV()
         {
-            return (byte[])m_iv.Clone();
+            return m_iv.ToArray();
         }
 
         public int IVLength => m_iv.Length;
@@ -90,7 +77,7 @@ namespace Org.BouncyCastle.Crypto.Parameters
         public ICipherParameters Parameters => m_parameters;
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-        internal ReadOnlySpan<byte> IV => m_iv;
+        internal ReadOnlySpan<byte> IV => m_iv.Span;
 #endif
     }
 }

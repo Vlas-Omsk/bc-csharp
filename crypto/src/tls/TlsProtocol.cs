@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 
@@ -777,7 +778,7 @@ namespace Org.BouncyCastle.Tls
 #endif
 
         /// <exception cref="IOException"/>
-        protected virtual RecordPreview SafePreviewRecordHeader(byte[] recordHeader)
+        protected virtual RecordPreview SafePreviewRecordHeader(Memory<byte> recordHeader)
         {
             try
             {
@@ -1336,11 +1337,23 @@ namespace Org.BouncyCastle.Tls
             // loop while there are enough bytes to read the length of the next record
             while (m_inputBuffers.Available >= RecordFormat.FragmentOffset)
             {
-                byte[] recordHeader = new byte[RecordFormat.FragmentOffset];
-                if (RecordFormat.FragmentOffset != m_inputBuffers.Peek(recordHeader))
-                    throw new TlsFatalAlert(AlertDescription.internal_error);
+                byte[] recordHeaderShared = ArrayPool<byte>.Shared.Rent(RecordFormat.FragmentOffset);
+                var recordHeader = recordHeaderShared.AsMemory(0, RecordFormat.FragmentOffset);
 
-                RecordPreview preview = SafePreviewRecordHeader(recordHeader);
+                RecordPreview preview;
+
+                try
+                {
+                    if (RecordFormat.FragmentOffset != m_inputBuffers.Peek(recordHeader))
+                        throw new TlsFatalAlert(AlertDescription.internal_error);
+
+                     preview = SafePreviewRecordHeader(recordHeader);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(recordHeaderShared);
+                }
+
                 if (m_inputBuffers.Available < preview.RecordSize)
                 {
                     // not enough bytes to read a whole record
@@ -1402,7 +1415,7 @@ namespace Org.BouncyCastle.Tls
             if (len < 1)
                 return 0;
 
-            m_applicationDataQueue.RemoveData(buf, off, len, 0);
+            m_applicationDataQueue.RemoveData(buf.AsMemory(off, len), 0);
             return len;
         }
 
@@ -1437,7 +1450,7 @@ namespace Org.BouncyCastle.Tls
                 throw new InvalidOperationException("Cannot use ReadOutput() in blocking mode! Use 'Stream() instead.");
 
             int bytesToRead = System.Math.Min(GetAvailableOutputBytes(), length);
-            m_outputBuffer.Buffer.RemoveData(buffer, offset, bytesToRead, 0);
+            m_outputBuffer.Buffer.RemoveData(buffer.AsMemory(offset, bytesToRead), 0);
             return bytesToRead;
         }
 

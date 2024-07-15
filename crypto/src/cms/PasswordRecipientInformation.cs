@@ -59,7 +59,7 @@ namespace Org.BouncyCastle.Cms
                 ICipherParameters parameters = ((CmsPbeKey)key).GetEncoded(kekAlgName);
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-                parameters = new ParametersWithIV(parameters, iv.GetOctetsSpan());
+                parameters = new ParametersWithIV(parameters, iv.GetOctetsMemory());
 #else
 				parameters = new ParametersWithIV(parameters, iv.GetOctets());
 #endif

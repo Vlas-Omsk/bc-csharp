@@ -109,7 +109,7 @@ namespace Org.BouncyCastle.OpenSsl
 
             if (mode != PemMode.ECB)
             {
-                cParams = new ParametersWithIV(cParams, iv);
+                cParams = new ParametersWithIV(cParams, iv.ToArray());
             }
 
             cipher.Init(encrypt, cParams);

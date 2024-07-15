@@ -134,13 +134,13 @@ namespace Org.BouncyCastle.Tls
         }
 
         /// <exception cref="IOException"/>
-        internal RecordPreview PreviewRecordHeader(byte[] recordHeader)
+        internal RecordPreview PreviewRecordHeader(Memory<byte> recordHeader)
         {
-            short recordType = CheckRecordType(recordHeader, RecordFormat.TypeOffset);
+            short recordType = CheckRecordType(recordHeader.Slice(RecordFormat.TypeOffset));
 
             //ProtocolVersion recordVersion = TlsUtilities.ReadVersion(recordHeader, RecordFormat.VersionOffset);
 
-            int length = TlsUtilities.ReadUint16(recordHeader, RecordFormat.LengthOffset);
+            int length = TlsUtilities.ReadUint16(recordHeader.Slice(RecordFormat.LengthOffset).Span);
 
             CheckLength(length, m_ciphertextLimit, AlertDescription.record_overflow);
 
@@ -192,7 +192,7 @@ namespace Org.BouncyCastle.Tls
             if (inputLen != (RecordFormat.FragmentOffset + length))
                 return false;
 
-            short recordType = CheckRecordType(input, inputOff + RecordFormat.TypeOffset);
+            short recordType = CheckRecordType(input.AsMemory(inputOff + RecordFormat.TypeOffset));
 
             ProtocolVersion recordVersion = TlsUtilities.ReadVersion(input, inputOff + RecordFormat.VersionOffset);
 
@@ -217,7 +217,7 @@ namespace Org.BouncyCastle.Tls
             if (!m_inputRecord.ReadHeader(m_input))
                 return false;
 
-            short recordType = CheckRecordType(m_inputRecord.m_buf, RecordFormat.TypeOffset);
+            short recordType = CheckRecordType(m_inputRecord.m_buf.AsMemory(RecordFormat.TypeOffset));
 
             ProtocolVersion recordVersion = TlsUtilities.ReadVersion(m_inputRecord.m_buf, RecordFormat.VersionOffset);
 
@@ -410,9 +410,9 @@ namespace Org.BouncyCastle.Tls
         }
 
         /// <exception cref="IOException"/>
-        private short CheckRecordType(byte[] buf, int off)
+        private short CheckRecordType(Memory<byte> buf)
         {
-            short recordType = TlsUtilities.ReadUint8(buf, off);
+            short recordType = TlsUtilities.ReadUint8(buf.Span);
 
             if (null != m_readCipherDeferred && recordType == ContentType.application_data)
             {

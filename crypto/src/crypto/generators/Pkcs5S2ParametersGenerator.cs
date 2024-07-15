@@ -121,7 +121,7 @@ namespace Org.BouncyCastle.Crypto.Generators
             byte[] dKey = GenerateDerivedKey(keySize + ivSize);
             KeyParameter key = ParameterUtilities.CreateKeyParameter(algorithm, dKey, 0, keySize);
 
-            return new ParametersWithIV(key, dKey, keySize, ivSize);
+            return new ParametersWithIV(key, dKey.AsMemory(keySize, ivSize));
         }
 
         /**

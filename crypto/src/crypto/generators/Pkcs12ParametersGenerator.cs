@@ -180,7 +180,7 @@ namespace Org.BouncyCastle.Crypto.Generators
 
             byte[] iv = GenerateDerivedKey(IVMaterial, ivSize);
 
-            return new ParametersWithIV(key, iv, 0, ivSize);
+            return new ParametersWithIV(key, iv.AsMemory(0, ivSize));
         }
 
         /**

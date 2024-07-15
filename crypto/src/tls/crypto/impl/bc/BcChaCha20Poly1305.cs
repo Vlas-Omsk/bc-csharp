@@ -94,9 +94,9 @@ namespace Org.BouncyCastle.Tls.Crypto.Impl.BC
             return m_isEncrypting ? inputLength + 16 : inputLength - 16;
         }
 
-        public void Init(byte[] nonce, int macSize, byte[] additionalData)
+        public void Init(ReadOnlyMemory<byte> nonce, int macSize, byte[] additionalData)
         {
-            if (nonce == null || nonce.Length != 12 || macSize != 16)
+            if (nonce.Length != 12 || macSize != 16)
                 throw new TlsFatalAlert(AlertDescription.internal_error);
 
             m_cipher.Init(m_isEncrypting, new ParametersWithIV(null, nonce));
@@ -119,14 +119,14 @@ namespace Org.BouncyCastle.Tls.Crypto.Impl.BC
         public void SetKey(byte[] key, int keyOff, int keyLen)
         {
             KeyParameter cipherKey = new KeyParameter(key, keyOff, keyLen);
-            m_cipher.Init(m_isEncrypting, new ParametersWithIV(cipherKey, Zeroes, 0, 12));
+            m_cipher.Init(m_isEncrypting, new ParametersWithIV(cipherKey, Zeroes.AsMemory(0, 12)));
         }
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
         public void SetKey(ReadOnlySpan<byte> key)
         {
             KeyParameter cipherKey = new KeyParameter(key);
-            m_cipher.Init(m_isEncrypting, new ParametersWithIV(cipherKey, Zeroes.AsSpan(0, 12)));
+            m_cipher.Init(m_isEncrypting, new ParametersWithIV(cipherKey, Zeroes.AsMemory(0, 12)));
         }
 #endif
 

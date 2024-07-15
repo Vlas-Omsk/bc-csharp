@@ -144,18 +144,14 @@ namespace Org.BouncyCastle.Tls
         /// <param name="offset">How many bytes to skip at the beginning of buf.</param>
         /// <param name="len">How many bytes to read at all.</param>
         /// <param name="skip">How many bytes from our data to skip.</param>
-        public void Read(byte[] buf, int offset, int len, int skip)
+        public void Read(Memory<byte> buf, int skip)
         {
-            if ((buf.Length - offset) < len)
-            {
-                throw new ArgumentException("Buffer size of " + buf.Length
-                    + " is too small for a read of " + len + " bytes");
-            }
-            if ((m_available - skip) < len)
+            if ((m_available - skip) < buf.Length)
             {
                 throw new InvalidOperationException("Not enough data to read");
             }
-            Array.Copy(m_databuf, m_skipped + skip, buf, offset, len);
+
+            m_databuf.AsMemory(m_skipped + skip, buf.Length).CopyTo(buf);
         }
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
@@ -228,10 +224,10 @@ namespace Org.BouncyCastle.Tls
         /// <param name="off">How many bytes to skip at the beginning of buf.</param>
         /// <param name="len">How many bytes to read at all.</param>
         /// <param name="skip">How many bytes from our data to skip.</param>
-        public void RemoveData(byte[] buf, int off, int len, int skip)
+        public void RemoveData(Memory<byte> buf, int skip)
         {
-            Read(buf, off, len, skip);
-            RemoveData(skip + len);
+            Read(buf, skip);
+            RemoveData(skip + buf.Length);
         }
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
@@ -245,7 +241,7 @@ namespace Org.BouncyCastle.Tls
         public byte[] RemoveData(int len, int skip)
         {
             byte[] buf = new byte[len];
-            RemoveData(buf, 0, len, skip);
+            RemoveData((Span<byte>)buf, skip);
             return buf;
         }
 

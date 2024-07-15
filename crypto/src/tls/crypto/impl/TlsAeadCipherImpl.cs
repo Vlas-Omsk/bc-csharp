@@ -23,7 +23,7 @@ namespace Org.BouncyCastle.Tls.Crypto.Impl
         /// <param name="macSize">MAC size in bytes.</param>
         /// <param name="additionalData">any additional data to be included in the MAC calculation.</param>
         /// <exception cref="IOException">if the parameters are inappropriate.</exception>
-        void Init(byte[] nonce, int macSize, byte[] additionalData);
+        void Init(ReadOnlyMemory<byte> nonce, int macSize, byte[] additionalData);
 
         /// <summary>Return the maximum size of the output for input of inputLength bytes.</summary>
         /// <param name="inputLength">the length (in bytes) of the proposed input.</param>

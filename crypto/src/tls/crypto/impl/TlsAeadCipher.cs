@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
 
 using Org.BouncyCastle.Utilities;
@@ -340,48 +341,61 @@ namespace Org.BouncyCastle.Tls.Crypto.Impl
             if (GetPlaintextDecodeLimit(ciphertextLength) < 0)
                 throw new TlsFatalAlert(AlertDescription.decode_error);
 
-            byte[] nonce = new byte[m_decryptNonce.Length + m_record_iv_length];
+            var nonceLength = m_decryptNonce.Length + m_record_iv_length;
 
-            switch (m_nonceMode)
-            {
-            case NONCE_RFC5288:
-                Array.Copy(m_decryptNonce, 0, nonce, 0, m_decryptNonce.Length);
-                Array.Copy(ciphertext, ciphertextOffset, nonce, nonce.Length - m_record_iv_length,
-                    m_record_iv_length);
-                break;
-            case NONCE_RFC7905:
-                TlsUtilities.WriteUint64(seqNo, nonce, nonce.Length - 8);
-                for (int i = 0; i < m_decryptNonce.Length; ++i)
-                {
-                    nonce[i] ^= m_decryptNonce[i];
-                }
-                break;
-            default:
-                throw new TlsFatalAlert(AlertDescription.internal_error);
-            }
-
-            m_decryptCipher.Init(nonce, m_macSize, null);
-
-            int encryptionOffset = ciphertextOffset + m_record_iv_length;
-            int encryptionLength = ciphertextLength - m_record_iv_length;
-            int innerPlaintextLength = m_decryptCipher.GetOutputSize(encryptionLength);
-
-            byte[] additionalData = GetAdditionalData(seqNo, recordType, recordVersion, ciphertextLength,
-                innerPlaintextLength, m_decryptConnectionID);
+            byte[] nonceShared = ArrayPool<byte>.Shared.Rent(nonceLength);
+            Memory<byte> nonce = nonceShared.AsMemory(0, nonceLength);
 
             int outputPos;
+            int encryptionOffset;
+            int encryptionLength;
+            int innerPlaintextLength;
+
             try
             {
-                outputPos = m_decryptCipher.DoFinal(additionalData, ciphertext, encryptionOffset, encryptionLength,
-                    ciphertext, encryptionOffset);
+                switch (m_nonceMode)
+                {
+                    case NONCE_RFC5288:
+                        m_decryptNonce.CopyTo(nonce);
+                        ciphertext.AsMemory(ciphertextOffset, m_record_iv_length).CopyTo(nonce.Slice(nonce.Length - m_record_iv_length));
+                        break;
+                    case NONCE_RFC7905:
+                        TlsUtilities.WriteUint64(seqNo, nonceShared, nonce.Length - 8);
+                        for (int i = 0; i < m_decryptNonce.Length; ++i)
+                        {
+                            nonceShared[i] ^= m_decryptNonce[i];
+                        }
+                        break;
+                    default:
+                        throw new TlsFatalAlert(AlertDescription.internal_error);
+                }
+
+                m_decryptCipher.Init(nonce, m_macSize, null);
+
+                encryptionOffset = ciphertextOffset + m_record_iv_length;
+                encryptionLength = ciphertextLength - m_record_iv_length;
+                innerPlaintextLength = m_decryptCipher.GetOutputSize(encryptionLength);
+
+                byte[] additionalData = GetAdditionalData(seqNo, recordType, recordVersion, ciphertextLength,
+                    innerPlaintextLength, m_decryptConnectionID);
+
+                try
+                {
+                    outputPos = m_decryptCipher.DoFinal(additionalData, ciphertext, encryptionOffset, encryptionLength,
+                        ciphertext, encryptionOffset);
+                }
+                catch (IOException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new TlsFatalAlert(AlertDescription.bad_record_mac, e);
+                }
             }
-            catch (IOException)
+            finally
             {
-                throw;
-            }
-            catch (Exception e)
-            {
-                throw new TlsFatalAlert(AlertDescription.bad_record_mac, e);
+                ArrayPool<byte>.Shared.Return(nonceShared);
             }
 
             if (outputPos != innerPlaintextLength)

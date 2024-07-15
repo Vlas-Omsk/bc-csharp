@@ -91,7 +91,7 @@ namespace Org.BouncyCastle.Crypto.Modes
 #else
                 initNonce = aeadParams.GetNonce();
 #endif
-                chacha20Params = new ParametersWithIV(initKeyParam, initNonce);
+                chacha20Params = new ParametersWithIV(initKeyParam, initNonce.ToArray());
 
                 this.mInitialAad = aeadParams.GetAssociatedText();
             }

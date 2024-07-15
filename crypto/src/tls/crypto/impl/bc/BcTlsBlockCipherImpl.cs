@@ -33,13 +33,13 @@ namespace Org.BouncyCastle.Tls.Crypto.Impl.BC
 
         public void Init(byte[] iv, int ivOff, int ivLen)
         {
-            m_cipher.Init(m_isEncrypting, new ParametersWithIV(key, iv, ivOff, ivLen));
+            m_cipher.Init(m_isEncrypting, new ParametersWithIV(key, iv.AsMemory(ivOff, ivLen)));
         }
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
         public void Init(ReadOnlySpan<byte> iv)
         {
-            m_cipher.Init(m_isEncrypting, new ParametersWithIV(key, iv));
+            m_cipher.Init(m_isEncrypting, new ParametersWithIV(key, iv.ToArray()));
         }
 #endif
 

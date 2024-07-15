@@ -24,10 +24,10 @@ namespace Org.BouncyCastle.Tls
             m_buffer.AddData(buf, bufOff, bufLen);
         }
 
-        public int Peek(byte[] buf)
+        public int Peek(Memory<byte> buf)
         {
             int bytesToRead = System.Math.Min(m_buffer.Available, buf.Length);
-            m_buffer.Read(buf, 0, bytesToRead, 0);
+            m_buffer.Read(buf.Slice(0, bytesToRead), 0);
             return bytesToRead;
         }
 
@@ -36,7 +36,7 @@ namespace Org.BouncyCastle.Tls
             Streams.ValidateBufferArguments(buffer, offset, count);
 
             int bytesToRead = System.Math.Min(m_buffer.Available, count);
-            m_buffer.RemoveData(buffer, offset, bytesToRead, 0);
+            m_buffer.RemoveData(buffer.AsMemory(offset, bytesToRead), 0);
             return bytesToRead;
         }
 
